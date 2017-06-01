@@ -53,8 +53,7 @@ class Linker
                 if (include.length() < 5)
                     continue;
 
-                String[] inc = include.split(" ");
-                _includes.add(new Include(inc[0], inc[1], Integer.parseInt(inc[2])));
+                _includes.add(new Include(include));
             }
         }
     }
