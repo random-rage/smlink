@@ -87,13 +87,14 @@ public class Linker
     byte[] link(String libPath) throws Exception
     {
         int incSize, codeSize;
-        int dataSize = _data.size();
-        int extrnSize = _externs.size();
+        int dataSize = (_data == null) ? 0 : _data.size();
+        int extrnSize = (_externs == null) ? 0 : _externs.size();
 
         if (_dynamic)
         {
             codeSize = _code.size();
-            _code.addAll(0, _data);
+            if (_data != null)
+                _code.addAll(0, _data);
 
             if (_incs != null)
             {
@@ -115,10 +116,13 @@ public class Linker
                 }
             }
             codeSize = _code.size();
-            _code.addAll(0, _data);
+            if (_data != null)
+                _code.addAll(0, _data);
         }
-        _code.addAll(_externs);
-        ByteBuffer bb = ByteBuffer.allocateDirect(Integer.BYTES * 4);
+        if (_externs != null)
+            _code.addAll(_externs);
+
+        ByteBuffer bb = ByteBuffer.allocate(Integer.BYTES * 4);
         bb.order(Command.BYTE_ORDER);
         bb.putInt(incSize);
         bb.putInt(dataSize);
@@ -139,13 +143,24 @@ public class Linker
 
     private ArrayList<Byte> extract(Path lib, String name) throws Exception
     {
-        byte[] file = Files.readAllBytes(lib);
+        byte[] file;
+        String libPath = lib.toString();
+        Path p = Paths.get(libPath + Extern.LIBRARY_EXT);
+        if (Files.exists(p))
+            file = Files.readAllBytes(p);
+        else
+        {
+            p = Paths.get(libPath + Command.EXECUTABLE_EXT);
+            if (Files.exists(p))
+                file = Files.readAllBytes(p);
+            else
+                throw new Exception(String.format("Library \"%s\" not found", libPath));
+        }
         ByteBuffer bb = ByteBuffer.wrap(file, 0, Integer.BYTES * 4);
         bb.order(Command.BYTE_ORDER);
 
-        int externsOffset = bb.capacity();
-        for (int i = 0; i < 3; i++)
-            externsOffset += bb.getInt();
+        int codeOffset = Integer.BYTES * 4 + bb.getInt() + bb.getInt(); // Смещение кода
+        int externsOffset = codeOffset + bb.getInt();               // Смещение внешних символов
         int externsSize = bb.getInt();
 
         String s = new String(file, externsOffset, externsSize);
@@ -158,8 +173,8 @@ public class Linker
             String[] e = extern.split(" ");
             if (e[0].equals(name))
             {
-                int start = Integer.parseInt(e[1]);
-                int end = Integer.parseInt(e[2]);
+                int start = Integer.parseInt(e[1]) + codeOffset;
+                int end = Integer.parseInt(e[2]) + codeOffset;
                 ArrayList<Byte> result = new ArrayList<>(end - start);
 
                 for (int i = start; i < end; i++)
