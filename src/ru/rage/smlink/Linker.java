@@ -45,9 +45,7 @@ class Linker
         else
         {
             _includes = new ArrayList<>();
-            String s = new String(bytes, Main.FILE_CHARSET);
-            String[] includes = s.split("[\\r\\n]+");
-
+            String[] includes = new String(bytes, Main.FILE_CHARSET).split("[\\r\\n]+");
             for (String include : includes)
             {
                 if (include.length() < 5)
