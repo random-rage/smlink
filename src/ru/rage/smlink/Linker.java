@@ -3,13 +3,10 @@ package ru.rage.smlink;
 import ru.rage.spoml.*;
 
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
-public class Linker
+class Linker
 {
     private ArrayList<Include> _includes;
     private ArrayList<Byte>    _incs;
@@ -110,10 +107,7 @@ public class Linker
             if (_includes != null)
             {
                 for (Include inc : _includes)
-                {
-                    _code.addAll(inc.getAddr(),
-                                 extract(Paths.get(libPath, inc.getLib()), inc.getName()));
-                }
+                    _code.addAll(inc.getAddr(), inc.extractCode(libPath));
             }
             codeSize = _code.size();
             if (_data != null)
@@ -139,49 +133,5 @@ public class Linker
             result[i++] = b;
 
         return result;
-    }
-
-    private ArrayList<Byte> extract(Path lib, String name) throws Exception
-    {
-        byte[] file;
-        String libPath = lib.toString();
-        Path p = Paths.get(libPath + Extern.LIBRARY_EXT);
-        if (Files.exists(p))
-            file = Files.readAllBytes(p);
-        else
-        {
-            p = Paths.get(libPath + Command.EXECUTABLE_EXT);
-            if (Files.exists(p))
-                file = Files.readAllBytes(p);
-            else
-                throw new Exception(String.format("Library \"%s\" not found", libPath));
-        }
-        ByteBuffer bb = ByteBuffer.wrap(file, 0, Integer.BYTES * 4);
-        bb.order(Command.BYTE_ORDER);
-
-        int codeOffset = Integer.BYTES * 4 + bb.getInt() + bb.getInt(); // Смещение кода
-        int externsOffset = codeOffset + bb.getInt();               // Смещение внешних символов
-        int externsSize = bb.getInt();
-
-        String s = new String(file, externsOffset, externsSize);
-        String[] externs = s.split("[\\r\\n]+");
-        for (String extern : externs)
-        {
-            if (extern.length() < 5)
-                continue;
-
-            String[] e = extern.split(" ");
-            if (e[0].equals(name))
-            {
-                int start = Integer.parseInt(e[1]) + codeOffset;
-                int end = Integer.parseInt(e[2]) + codeOffset;
-                ArrayList<Byte> result = new ArrayList<>(end - start);
-
-                for (int i = start; i < end; i++)
-                    result.add(file[i]);
-                return result;
-            }
-        }
-        throw new Exception(String.format("Extern \"%s\" not found", name));
     }
 }
