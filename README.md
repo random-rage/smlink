@@ -1,7 +1,7 @@
 # smlink
 SPO Machine Linker
 
-Компоновщик для модели вычислительной машиный [SPOM](https://github.com/random-rage/spom).
+Компоновщик для модели вычислительной машины [SPOM](https://github.com/random-rage/spom).
 
 ## Использование
 
